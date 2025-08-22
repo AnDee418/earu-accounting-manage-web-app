@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { GetServerSidePropsContext } from 'next';
+import { NextRequest } from 'next/server';
 import nookies from 'nookies';
 import { verifyIdToken } from '../firebase/admin';
 import { UserRole } from '@/types';
@@ -14,15 +15,27 @@ export interface SessionUser {
 
 /**
  * リクエストからセッションユーザーを取得
+ * App RouterとPages Router両方に対応
  */
 export async function getSessionUser(
-  req: NextApiRequest | GetServerSidePropsContext['req']
+  req: NextRequest | NextApiRequest | GetServerSidePropsContext['req']
 ): Promise<SessionUser | null> {
   try {
-    const cookies = nookies.get({ req });
-    const token = cookies.token;
+    let token: string | undefined;
+
+    // NextRequest (App Router)の場合
+    if ('cookies' in req && typeof req.cookies.get === 'function') {
+      const cookieValue = req.cookies.get('token');
+      token = cookieValue?.value;
+    } 
+    // NextApiRequest/GetServerSidePropsContext (Pages Router)の場合
+    else {
+      const cookies = nookies.get({ req: req as NextApiRequest | GetServerSidePropsContext['req'] });
+      token = cookies.token;
+    }
 
     if (!token) {
+      console.log('No token found in cookies');
       return null;
     }
 
@@ -34,7 +47,7 @@ export async function getSessionUser(
     const departmentId = decodedToken.departmentId as string | undefined;
 
     if (!role || !companyId) {
-      console.error('Missing required claims in token');
+      console.error('Missing required claims in token', { role, companyId });
       return null;
     }
 

@@ -84,7 +84,9 @@ export default function SettingsPage() {
     setError('');
 
     try {
-      const response = await fetch('/api/masters');
+      const response = await fetch('/api/masters', {
+        credentials: 'include', // クッキーを含める
+      });
       if (!response.ok) {
         throw new Error('Failed to fetch master data');
       }
@@ -152,6 +154,7 @@ export default function SettingsPage() {
       const response = await fetch('/api/masters/import', {
         method: 'POST',
         body: formData,
+        credentials: 'include', // クッキーを含める
       });
 
       const result = await response.json();

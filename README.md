@@ -1,8 +1,43 @@
-# EARU経費精算アプリ（Next.js管理画面）
+# EARU 会計アプリケーション
 
-## 概要
+EARU システムの会計管理用 Web アプリケーション。PCA 会計と連携し、経費精算や仕訳データの管理を行います。
 
-PCA会計と連携する経費精算システムの管理画面（Web版）です。経理担当者が経費の承認・確認・エクスポートを行うためのインターフェースを提供します。
+## 🚀 クイックスタート
+
+### 前提条件
+- Node.js 18.x 以上
+- Firebaseプロジェクト（要作成）
+- Firebase Admin SDK認証情報
+
+### セットアップ手順
+
+1. **依存関係のインストール**
+```bash
+npm install
+```
+
+2. **環境変数の設定**
+```bash
+cp .env.local.example .env.local
+# .env.localを編集してFirebaseの認証情報を設定
+```
+
+3. **テストユーザーの作成**
+```bash
+node scripts/setup-test-user.js
+```
+
+4. **開発サーバーの起動**
+```bash
+npm run dev
+```
+
+5. **ログイン**
+- URL: http://localhost:3000
+- Email: test@example.com
+- Password: test123456
+
+📖 **詳細なセットアップ手順とトラブルシューティングは [SETUP.md](./SETUP.md) を参照してください。**
 
 ## 主な機能
 
