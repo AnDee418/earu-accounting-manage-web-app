@@ -17,11 +17,22 @@ import {
   Button,
   CircularProgress,
   Alert,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Stack,
+  Snackbar,
 } from '@mui/material';
 import {
   Refresh as RefreshIcon,
   Upload as UploadIcon,
   Add as AddIcon,
+  CloudUpload as CloudUploadIcon,
 } from '@mui/icons-material';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
@@ -58,6 +69,15 @@ export default function SettingsPage() {
   const [taxes, setTaxes] = useState<Tax[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  
+  // CSVインポート関連の状態
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [importType, setImportType] = useState<string>('');
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importing, setImporting] = useState(false);
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error'>('success');
 
   const fetchMasters = async () => {
     setLoading(true);
@@ -95,6 +115,70 @@ export default function SettingsPage() {
     return format(new Date(date), 'yyyy/MM/dd', { locale: ja });
   };
 
+  // CSVインポート関連の関数
+  const handleImportDialogOpen = () => {
+    setImportDialogOpen(true);
+    setImportType('');
+    setImportFile(null);
+  };
+
+  const handleImportDialogClose = () => {
+    setImportDialogOpen(false);
+    setImportType('');
+    setImportFile(null);
+  };
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (files && files.length > 0) {
+      setImportFile(files[0]);
+    }
+  };
+
+  const handleImport = async () => {
+    if (!importType || !importFile) {
+      setSnackbarMessage('マスタータイプとファイルを選択してください。');
+      setSnackbarSeverity('error');
+      setSnackbarOpen(true);
+      return;
+    }
+
+    setImporting(true);
+    const formData = new FormData();
+    formData.append('file', importFile);
+    formData.append('type', importType);
+
+    try {
+      const response = await fetch('/api/masters/import', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        setSnackbarMessage(result.message || 'インポートが完了しました。');
+        setSnackbarSeverity('success');
+        setSnackbarOpen(true);
+        handleImportDialogClose();
+        fetchMasters(); // マスタデータを再取得
+      } else {
+        throw new Error(result.error || 'インポートに失敗しました。');
+      }
+    } catch (err: any) {
+      console.error('Import error:', err);
+      setSnackbarMessage(err.message || 'インポート中にエラーが発生しました。');
+      setSnackbarSeverity('error');
+      setSnackbarOpen(true);
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const handleSnackbarClose = () => {
+    setSnackbarOpen(false);
+  };
+
   return (
     <MainLayout>
       <Box>
@@ -109,7 +193,11 @@ export default function SettingsPage() {
             >
               更新
             </Button>
-            <Button variant="contained" startIcon={<UploadIcon />} disabled>
+            <Button 
+              variant="contained" 
+              startIcon={<UploadIcon />}
+              onClick={handleImportDialogOpen}
+            >
               CSVインポート
             </Button>
           </Box>
@@ -144,6 +232,7 @@ export default function SettingsPage() {
                       <TableCell>PCAコード</TableCell>
                       <TableCell>科目名</TableCell>
                       <TableCell>税区分</TableCell>
+                      <TableCell>補助科目数</TableCell>
                       <TableCell>状態</TableCell>
                       <TableCell>有効期間</TableCell>
                     </TableRow>
@@ -154,6 +243,7 @@ export default function SettingsPage() {
                         <TableCell>{account.pcaCode}</TableCell>
                         <TableCell>{account.name}</TableCell>
                         <TableCell>{account.taxCode}</TableCell>
+                        <TableCell>{account.subAccounts?.length || 0}</TableCell>
                         <TableCell>
                           <Chip
                             label={account.isActive ? '有効' : '無効'}
@@ -344,6 +434,90 @@ export default function SettingsPage() {
             </Box>
           </TabPanel>
         </Paper>
+
+        {/* CSVインポートダイアログ */}
+        <Dialog open={importDialogOpen} onClose={handleImportDialogClose} maxWidth="sm" fullWidth>
+          <DialogTitle>マスタデータのCSVインポート</DialogTitle>
+          <DialogContent>
+            <Stack spacing={3} sx={{ mt: 2 }}>
+              <FormControl fullWidth>
+                <InputLabel id="import-type-label">マスタータイプ</InputLabel>
+                <Select
+                  labelId="import-type-label"
+                  value={importType}
+                  label="マスタータイプ"
+                  onChange={(e) => setImportType(e.target.value)}
+                >
+                  <MenuItem value="accounts">勘定科目</MenuItem>
+                  <MenuItem value="subAccounts">補助科目</MenuItem>
+                  <MenuItem value="departments">部門</MenuItem>
+                  <MenuItem value="taxes">税区分</MenuItem>
+                </Select>
+              </FormControl>
+
+              <Box>
+                <input
+                  accept=".csv,.xlsx,.xls"
+                  style={{ display: 'none' }}
+                  id="csv-file-input"
+                  type="file"
+                  onChange={handleFileChange}
+                />
+                <label htmlFor="csv-file-input">
+                  <Button
+                    variant="outlined"
+                    component="span"
+                    startIcon={<CloudUploadIcon />}
+                    fullWidth
+                  >
+                    ファイルを選択 (CSV/Excel)
+                  </Button>
+                </label>
+                {importFile && (
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                    選択されたファイル: {importFile.name}
+                  </Typography>
+                )}
+              </Box>
+
+              <Alert severity="info">
+                <Typography variant="body2">
+                  インポート時の注意事項：
+                </Typography>
+                <ul style={{ margin: '8px 0', paddingLeft: '20px' }}>
+                  <li>CSVファイルはShift-JIS/UTF-8形式に対応しています</li>
+                  <li>税区分はExcelファイル（.xlsx）にも対応しています</li>
+                  <li>既存のデータは上書きされます</li>
+                  <li>補助科目は勘定科目の後にインポートしてください</li>
+                </ul>
+              </Alert>
+            </Stack>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={handleImportDialogClose} disabled={importing}>
+              キャンセル
+            </Button>
+            <Button
+              onClick={handleImport}
+              variant="contained"
+              disabled={importing || !importType || !importFile}
+            >
+              {importing ? <CircularProgress size={24} /> : 'インポート'}
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* スナックバー */}
+        <Snackbar
+          open={snackbarOpen}
+          autoHideDuration={6000}
+          onClose={handleSnackbarClose}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        >
+          <Alert onClose={handleSnackbarClose} severity={snackbarSeverity} sx={{ width: '100%' }}>
+            {snackbarMessage}
+          </Alert>
+        </Snackbar>
       </Box>
     </MainLayout>
   );

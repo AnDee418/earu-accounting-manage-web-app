@@ -15,13 +15,16 @@
     "@mui/material": "^7.3.1",
     "@mui/x-data-grid": "^8.10.2",
     "date-fns": "^4.1.0",
+    "encoding-japanese": "^2.2.0",
     "firebase": "^12.1.0",
     "firebase-admin": "^13.4.0",
+    "iconv-lite": "^0.7.0",
     "js-cookie": "^3.0.5",
     "next": "15.5.0",
     "nookies": "^2.5.2",
     "react": "19.1.0",
-    "react-dom": "19.1.0"
+    "react-dom": "19.1.0",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",

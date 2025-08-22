@@ -114,6 +114,16 @@ export interface Account {
   effectiveFrom: Date;
   effectiveTo?: Date;
   aliases?: string[];
+  subAccounts?: SubAccount[]; // 補助科目のリスト
+}
+
+// 補助科目マスタ
+export interface SubAccount {
+  pcaSubCode: string;
+  name: string;
+  shortName?: string;
+  taxCode?: string;
+  isActive: boolean;
 }
 
 // 税区分マスタ
