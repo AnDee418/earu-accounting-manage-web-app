@@ -11,21 +11,25 @@ const path = require('path');
 const iconv = require('iconv-lite');
 const xlsx = require('xlsx');
 
+// 環境変数を読み込み
+require('dotenv').config({ path: '.env.local' });
+
 // Firebase Admin SDK の初期化
 if (!admin.apps.length) {
-  const serviceAccountPath = process.env.GOOGLE_APPLICATION_CREDENTIALS || 
-    path.join(__dirname, '../firebase-service-account.json');
-  
-  if (!fs.existsSync(serviceAccountPath)) {
-    console.error('Firebase service account file not found.');
-    console.log('Please set GOOGLE_APPLICATION_CREDENTIALS environment variable');
+  try {
+    admin.initializeApp({
+      credential: admin.credential.cert({
+        projectId: process.env.FIREBASE_ADMIN_PROJECT_ID,
+        clientEmail: process.env.FIREBASE_ADMIN_CLIENT_EMAIL,
+        privateKey: process.env.FIREBASE_ADMIN_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+      }),
+    });
+  } catch (error) {
+    console.error('Firebase Admin SDK初期化エラー:', error);
+    console.log('環境変数が正しく設定されているか確認してください。');
+    console.log('詳細は SETUP.md を参照してください。');
     process.exit(1);
   }
-
-  const serviceAccount = require(serviceAccountPath);
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount)
-  });
 }
 
 const db = admin.firestore();
