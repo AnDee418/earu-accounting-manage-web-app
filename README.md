@@ -1,36 +1,202 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# EARU 経理管理システム Web アプリケーション
 
-## Getting Started
+経理管理者向けのNext.js製Webアプリケーション。Flutterモバイルアプリと共通のFirestoreデータ構造を使用し、経費精算の承認・CSVエクスポート・マスタ管理を行います。
 
-First, run the development server:
+## 技術スタック
+
+- **フレームワーク**: Next.js 15.5 (App Router)
+- **言語**: TypeScript
+- **UI**: Material-UI (MUI)
+- **認証**: Firebase Auth (OIDC: Azure AD/Google Workspace)
+- **DB**: Firestore
+- **ストレージ**: Firebase Storage
+- **セキュリティ**: Firebase App Check, RBAC (Custom Claims)
+
+## 機能一覧
+
+### MVP (Day 1-2)
+- [x] プロジェクト初期設定
+- [x] Firebase SDK統合
+- [ ] 認証・セッション管理
+- [ ] 受信ボックス（経費一覧）
+- [ ] 詳細ビュー
+- [ ] CSVエクスポートAPI
+- [ ] マスタデータ参照
+
+### 今後の実装予定
+- [ ] AI差分ハイライト表示
+- [ ] 承認/差戻し/修正機能
+- [ ] 部署別ダッシュボード
+- [ ] 監査ログ表示
+- [ ] マスタデータ管理UI
+
+## セットアップ手順
+
+### 1. 環境変数の設定
+
+`.env.example`を`.env.local`にコピーして、必要な値を設定してください：
+
+```bash
+cp .env.example .env.local
+```
+
+必要な環境変数：
+- Firebase Web SDK設定（Firebaseコンソールから取得）
+- Firebase Admin SDK設定（サービスアカウントキーから取得）
+- App Checkキー（reCAPTCHA v3）
+
+### 2. 依存関係のインストール
+
+```bash
+npm install
+```
+
+### 3. 開発サーバーの起動
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+http://localhost:3000 でアプリケーションが起動します。
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 4. ビルドと本番実行
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run build
+npm start
+```
 
-## Learn More
+## プロジェクト構成
 
-To learn more about Next.js, take a look at the following resources:
+```
+src/
+├── app/                    # Next.js App Router
+│   ├── api/               # APIルート
+│   │   └── export/       # エクスポート関連API
+│   ├── expenses/         # 経費管理ページ
+│   ├── settings/         # 設定ページ
+│   └── login/           # ログインページ
+├── components/            # 共通コンポーネント
+│   ├── layout/          # レイアウト関連
+│   └── expenses/        # 経費関連コンポーネント
+├── contexts/             # React Context
+│   └── AuthContext.tsx  # 認証コンテキスト
+├── lib/                  # ライブラリ・ユーティリティ
+│   ├── firebase/        # Firebase設定
+│   └── auth/           # 認証関連
+├── theme/               # MUIテーマ設定
+└── types/              # TypeScript型定義
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## ロールベースアクセス制御 (RBAC)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### ロール定義
 
-## Deploy on Vercel
+| ロール | 権限 |
+|--------|------|
+| `staff` | 自分の経費のみ閲覧・編集（ドラフトのみ） |
+| `manager` | 部署の経費閲覧 |
+| `finance` | 全社経費の閲覧・承認・エクスポート |
+| `admin` | 全権限＋システム管理 |
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Custom Claims設定例
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```json
+{
+  "role": "finance",
+  "companyId": "ACME",
+  "departmentId": "D0101"
+}
+```
+
+## Firestoreインデックス
+
+以下のインデックスを作成してください：
+
+### Collection Group: `expenses`
+- `companyId` + `status` + `paidAt` (DESC)
+- `departmentId` + `paidAt` (DESC)
+- `userId` + `status`
+
+### Collection: `expense_search`
+- `status` + `paidAt` (DESC)
+- `departmentId` + `paidAt` (DESC)
+- `pcaStatus` + `updatedAt` (DESC)
+
+## APIエンドポイント
+
+### エクスポートAPI
+
+```
+POST /api/export/pca
+```
+
+リクエストボディ：
+```json
+{
+  "periodFrom": "2025-01-01",
+  "periodTo": "2025-01-31",
+  "departments": ["D0101", "D0102"],
+  "status": ["approved"],
+  "profileId": "profile_001"
+}
+```
+
+レスポンス：
+```json
+{
+  "jobId": "job_12345",
+  "status": "running"
+}
+```
+
+## セキュリティ設定
+
+### App Check
+- Web環境でreCAPTCHA v3を使用
+- 全てのFirestore/Storageアクセスで検証
+
+### 認証フロー
+1. Firebase Auth（OIDC）でログイン
+2. IDトークンをクッキーに保存
+3. サーバー側でトークン検証
+4. Custom Claimsでロール・会社ID確認
+
+## 開発ガイドライン
+
+### コーディング規約
+- ESLint + Prettierを使用
+- コンポーネントは関数型で記述
+- 型定義を必須とする
+
+### Git フロー
+- `main`: 本番環境
+- `develop`: 開発環境
+- `feature/*`: 機能開発
+- `hotfix/*`: 緊急修正
+
+### テスト
+- 単体テスト: Jest
+- E2Eテスト: Cypress（予定）
+
+## トラブルシューティング
+
+### Firebase Admin SDKエラー
+- サービスアカウントキーが正しく設定されているか確認
+- 改行文字（\n）が正しくエスケープされているか確認
+
+### App Checkエラー
+- reCAPTCHAキーが正しく設定されているか確認
+- ドメインがFirebaseプロジェクトに登録されているか確認
+
+### 認証エラー
+- Custom Claimsが正しく設定されているか確認
+- IDトークンの有効期限を確認（10分ごとに自動更新）
+
+## ライセンス
+
+Private - EARU System
+
+## お問い合わせ
+
+技術的な質問は開発チームまでお問い合わせください。

@@ -1,0 +1,350 @@
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import {
+  Box,
+  Paper,
+  Typography,
+  Tabs,
+  Tab,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Chip,
+  Button,
+  CircularProgress,
+  Alert,
+} from '@mui/material';
+import {
+  Refresh as RefreshIcon,
+  Upload as UploadIcon,
+  Add as AddIcon,
+} from '@mui/icons-material';
+import { format } from 'date-fns';
+import { ja } from 'date-fns/locale';
+import MainLayout from '@/components/layout/MainLayout';
+import { Account, Tax, Department, Category } from '@/types';
+
+interface TabPanelProps {
+  children?: React.ReactNode;
+  index: number;
+  value: number;
+}
+
+function TabPanel(props: TabPanelProps) {
+  const { children, value, index, ...other } = props;
+
+  return (
+    <div
+      role="tabpanel"
+      hidden={value !== index}
+      id={`settings-tabpanel-${index}`}
+      aria-labelledby={`settings-tab-${index}`}
+      {...other}
+    >
+      {value === index && <Box sx={{ p: 3 }}>{children}</Box>}
+    </div>
+  );
+}
+
+export default function SettingsPage() {
+  const [tabValue, setTabValue] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [taxes, setTaxes] = useState<Tax[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+
+  const fetchMasters = async () => {
+    setLoading(true);
+    setError('');
+
+    try {
+      const response = await fetch('/api/masters');
+      if (!response.ok) {
+        throw new Error('Failed to fetch master data');
+      }
+
+      const data = await response.json();
+      setAccounts(data.accounts || []);
+      setTaxes(data.taxes || []);
+      setDepartments(data.departments || []);
+      setCategories(data.categories || []);
+    } catch (err: any) {
+      console.error('Error fetching masters:', err);
+      setError('マスタデータの取得に失敗しました。');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchMasters();
+  }, []);
+
+  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
+    setTabValue(newValue);
+  };
+
+  const formatDate = (date: Date | undefined) => {
+    if (!date) return '-';
+    return format(new Date(date), 'yyyy/MM/dd', { locale: ja });
+  };
+
+  return (
+    <MainLayout>
+      <Box>
+        <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+          <Typography variant="h4">設定</Typography>
+          <Box display="flex" gap={1}>
+            <Button
+              variant="outlined"
+              startIcon={<RefreshIcon />}
+              onClick={fetchMasters}
+              disabled={loading}
+            >
+              更新
+            </Button>
+            <Button variant="contained" startIcon={<UploadIcon />} disabled>
+              CSVインポート
+            </Button>
+          </Box>
+        </Box>
+
+        {error && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {error}
+          </Alert>
+        )}
+
+        <Paper>
+          <Tabs value={tabValue} onChange={handleTabChange} aria-label="settings tabs">
+            <Tab label="勘定科目" />
+            <Tab label="税区分" />
+            <Tab label="部門" />
+            <Tab label="カテゴリ" />
+            <Tab label="エクスポート設定" />
+          </Tabs>
+
+          {/* 勘定科目タブ */}
+          <TabPanel value={tabValue} index={0}>
+            {loading ? (
+              <Box display="flex" justifyContent="center" p={3}>
+                <CircularProgress />
+              </Box>
+            ) : (
+              <TableContainer>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>PCAコード</TableCell>
+                      <TableCell>科目名</TableCell>
+                      <TableCell>税区分</TableCell>
+                      <TableCell>状態</TableCell>
+                      <TableCell>有効期間</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {accounts.map((account) => (
+                      <TableRow key={account.pcaCode}>
+                        <TableCell>{account.pcaCode}</TableCell>
+                        <TableCell>{account.name}</TableCell>
+                        <TableCell>{account.taxCode}</TableCell>
+                        <TableCell>
+                          <Chip
+                            label={account.isActive ? '有効' : '無効'}
+                            color={account.isActive ? 'success' : 'default'}
+                            size="small"
+                          />
+                        </TableCell>
+                        <TableCell>
+                          {formatDate(account.effectiveFrom)} 〜{' '}
+                          {formatDate(account.effectiveTo)}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            )}
+          </TabPanel>
+
+          {/* 税区分タブ */}
+          <TabPanel value={tabValue} index={1}>
+            {loading ? (
+              <Box display="flex" justifyContent="center" p={3}>
+                <CircularProgress />
+              </Box>
+            ) : (
+              <TableContainer>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>PCA税区分コード</TableCell>
+                      <TableCell>税率</TableCell>
+                      <TableCell>計算方法</TableCell>
+                      <TableCell>端数処理</TableCell>
+                      <TableCell>状態</TableCell>
+                      <TableCell>有効期間</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {taxes.map((tax) => (
+                      <TableRow key={tax.pcaTaxCode}>
+                        <TableCell>{tax.pcaTaxCode}</TableCell>
+                        <TableCell>{(tax.rate * 100).toFixed(0)}%</TableCell>
+                        <TableCell>
+                          {tax.method === 'exclusive' ? '外税' : '内税'}
+                        </TableCell>
+                        <TableCell>
+                          {tax.rounding === 'round'
+                            ? '四捨五入'
+                            : tax.rounding === 'ceil'
+                            ? '切り上げ'
+                            : '切り捨て'}
+                        </TableCell>
+                        <TableCell>
+                          <Chip
+                            label={tax.isActive ? '有効' : '無効'}
+                            color={tax.isActive ? 'success' : 'default'}
+                            size="small"
+                          />
+                        </TableCell>
+                        <TableCell>
+                          {formatDate(tax.effectiveFrom)} 〜 {formatDate(tax.effectiveTo)}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            )}
+          </TabPanel>
+
+          {/* 部門タブ */}
+          <TabPanel value={tabValue} index={2}>
+            {loading ? (
+              <Box display="flex" justifyContent="center" p={3}>
+                <CircularProgress />
+              </Box>
+            ) : (
+              <TableContainer>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>部門コード</TableCell>
+                      <TableCell>部門名</TableCell>
+                      <TableCell>親部門</TableCell>
+                      <TableCell>状態</TableCell>
+                      <TableCell>有効期間</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {departments.map((dept) => (
+                      <TableRow key={dept.pcaDeptCode}>
+                        <TableCell>{dept.pcaDeptCode}</TableCell>
+                        <TableCell>{dept.name}</TableCell>
+                        <TableCell>{dept.parentCode || '-'}</TableCell>
+                        <TableCell>
+                          <Chip
+                            label={dept.isActive ? '有効' : '無効'}
+                            color={dept.isActive ? 'success' : 'default'}
+                            size="small"
+                          />
+                        </TableCell>
+                        <TableCell>
+                          {formatDate(dept.effectiveFrom)} 〜 {formatDate(dept.effectiveTo)}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            )}
+          </TabPanel>
+
+          {/* カテゴリタブ */}
+          <TabPanel value={tabValue} index={3}>
+            {loading ? (
+              <Box display="flex" justifyContent="center" p={3}>
+                <CircularProgress />
+              </Box>
+            ) : (
+              <TableContainer>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>カテゴリ名</TableCell>
+                      <TableCell>デフォルト借方科目</TableCell>
+                      <TableCell>デフォルト貸方科目</TableCell>
+                      <TableCell>税ルール</TableCell>
+                      <TableCell>表示順</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {categories.map((category) => (
+                      <TableRow key={category.id}>
+                        <TableCell>{category.name}</TableCell>
+                        <TableCell>{category.defaultDebitAccountPcaCode || '-'}</TableCell>
+                        <TableCell>{category.defaultCreditAccountPcaCode || '-'}</TableCell>
+                        <TableCell>{category.taxRule || '-'}</TableCell>
+                        <TableCell>{category.sortOrder}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            )}
+          </TabPanel>
+
+          {/* エクスポート設定タブ */}
+          <TabPanel value={tabValue} index={4}>
+            <Box>
+              <Typography variant="h6" gutterBottom>
+                エクスポートプロファイル
+              </Typography>
+              <TableContainer>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>プロファイル名</TableCell>
+                      <TableCell>文字コード</TableCell>
+                      <TableCell>区切り文字</TableCell>
+                      <TableCell>日付形式</TableCell>
+                      <TableCell>操作</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    <TableRow>
+                      <TableCell>PCA標準</TableCell>
+                      <TableCell>Shift_JIS</TableCell>
+                      <TableCell>カンマ (,)</TableCell>
+                      <TableCell>YYYY/MM/DD</TableCell>
+                      <TableCell>
+                        <Button size="small" variant="outlined">
+                          編集
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
+              </TableContainer>
+              <Button
+                variant="outlined"
+                startIcon={<AddIcon />}
+                sx={{ mt: 2 }}
+                disabled
+              >
+                プロファイル追加
+              </Button>
+            </Box>
+          </TabPanel>
+        </Paper>
+      </Box>
+    </MainLayout>
+  );
+}
