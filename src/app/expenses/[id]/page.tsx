@@ -120,7 +120,17 @@ export default function ExpenseDetailPage() {
       }
     };
 
-    fetchExpenseDetail();
+    const loadExpenseDetail = async () => {
+      try {
+        await fetchExpenseDetail();
+      } catch (error) {
+        console.error('Error in useEffect loadExpenseDetail:', error);
+        setError('データの読み込み中にエラーが発生しました。');
+        setLoading(false);
+      }
+    };
+    
+    loadExpenseDetail();
   }, [companyId, params.id]);
 
   const getStatusChip = (status: ExpenseStatus) => {

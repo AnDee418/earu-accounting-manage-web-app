@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
-import { getSessionUser } from '@/lib/auth/session';
+import { getSessionUserFromAppRouter } from '@/lib/auth/session';
 import { ExportJob, ExpenseStatus } from '@/types';
 
 /**
@@ -10,7 +10,7 @@ import { ExportJob, ExpenseStatus } from '@/types';
 export async function POST(request: NextRequest) {
   try {
     // 認証チェック
-    const user = await getSessionUser(request);
+    const user = await getSessionUserFromAppRouter(request);
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }

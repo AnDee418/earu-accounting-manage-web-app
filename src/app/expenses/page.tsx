@@ -106,7 +106,16 @@ export default function ExpensesPage() {
   }, [companyId, statusFilter, pcaStatusFilter, departmentFilter, dateFrom, dateTo]);
 
   useEffect(() => {
-    fetchExpenses();
+    const loadExpenses = async () => {
+      try {
+        await fetchExpenses();
+      } catch (error) {
+        console.error('Error in useEffect loadExpenses:', error);
+        setError('データの読み込み中にエラーが発生しました。');
+      }
+    };
+    
+    loadExpenses();
   }, [fetchExpenses]);
 
   const handleStatusFilterChange = (event: SelectChangeEvent) => {

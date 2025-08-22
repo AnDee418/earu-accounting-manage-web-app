@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
-import { getSessionUser } from '@/lib/auth/session';
-import { Account, Tax, Department, Category } from '@/types';
+import { getSessionUserFromAppRouter } from '@/lib/auth/session';
+import { Account, SubAccount, Tax, Department, Category } from '@/types';
 
 /**
  * GET /api/masters
@@ -10,7 +10,7 @@ import { Account, Tax, Department, Category } from '@/types';
 export async function GET(request: NextRequest) {
   try {
     // 認証チェック
-    const user = await getSessionUser(request);
+    const user = await getSessionUserFromAppRouter(request);
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -85,6 +85,26 @@ export async function GET(request: NextRequest) {
       });
       
       result.departments = departments;
+    }
+
+    if (!type || type === 'subAccounts') {
+      const subAccountsQuery = isActiveOnly
+        ? companyRef.collection('subAccounts').where('isActive', '==', true)
+        : companyRef.collection('subAccounts');
+      
+      const subAccountsSnapshot = await subAccountsQuery.get();
+      const subAccounts: SubAccount[] = [];
+      
+      subAccountsSnapshot.forEach((doc) => {
+        const data = doc.data();
+        subAccounts.push({
+          pcaSubCode: doc.id.split('-')[1], // ドキュメントIDから補助科目コードを抽出
+          accountCode: doc.id.split('-')[0], // ドキュメントIDから勘定科目コードを抽出
+          ...data,
+        } as SubAccount);
+      });
+      
+      result.subAccounts = subAccounts;
     }
 
     if (!type || type === 'categories') {

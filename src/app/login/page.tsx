@@ -13,6 +13,7 @@ import {
   Alert,
   CircularProgress,
   Divider,
+  Link,
 } from '@mui/material';
 import {
   signInWithEmailAndPassword,
@@ -168,6 +169,23 @@ export default function LoginPage() {
             <Typography variant="caption" display="block" align="center" sx={{ mt: 3 }}>
               ※ 事前に管理者による権限設定が必要です
             </Typography>
+
+            <Divider sx={{ my: 3 }} />
+
+            <Box sx={{ textAlign: 'center' }}>
+              <Typography variant="body2" color="text.secondary">
+                初回利用の方はこちら
+              </Typography>
+              <Link
+                component="button"
+                type="button"
+                onClick={() => router.push('/register')}
+                underline="hover"
+                sx={{ fontSize: '0.875rem', fontWeight: 'medium' }}
+              >
+                新規会社登録・ユーザー追加
+              </Link>
+            </Box>
           </CardContent>
         </Card>
       </Box>

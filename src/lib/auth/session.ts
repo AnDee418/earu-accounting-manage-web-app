@@ -1,4 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
+import { NextRequest } from 'next/server';
 import { GetServerSidePropsContext } from 'next';
 import nookies from 'nookies';
 import { verifyIdToken } from '../firebase/admin';
@@ -13,7 +14,7 @@ export interface SessionUser {
 }
 
 /**
- * リクエストからセッションユーザーを取得
+ * リクエストからセッションユーザーを取得（Pages Router用）
  */
 export async function getSessionUser(
   req: NextApiRequest | GetServerSidePropsContext['req']
@@ -47,6 +48,45 @@ export async function getSessionUser(
     };
   } catch (error) {
     console.error('Error getting session user:', error);
+    return null;
+  }
+}
+
+/**
+ * リクエストからセッションユーザーを取得（App Router用）
+ */
+export async function getSessionUserFromAppRouter(
+  req: NextRequest
+): Promise<SessionUser | null> {
+  try {
+    // NextRequestからクッキーを取得
+    const token = req.cookies.get('token')?.value;
+
+    if (!token) {
+      return null;
+    }
+
+    const decodedToken = await verifyIdToken(token);
+    
+    // カスタムクレームからロールと会社IDを取得
+    const role = decodedToken.role as UserRole;
+    const companyId = decodedToken.companyId as string;
+    const departmentId = decodedToken.departmentId as string | undefined;
+
+    if (!role || !companyId) {
+      console.error('Missing required claims in token');
+      return null;
+    }
+
+    return {
+      uid: decodedToken.uid,
+      email: decodedToken.email || '',
+      role,
+      companyId,
+      departmentId,
+    };
+  } catch (error) {
+    console.error('Error getting session user from App Router:', error);
     return null;
   }
 }

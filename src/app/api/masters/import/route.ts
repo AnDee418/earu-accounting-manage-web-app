@@ -1,22 +1,37 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
-import { getSessionUser } from '@/lib/auth/session';
+import { getSessionUserFromAppRouter } from '@/lib/auth/session';
 import { Account, SubAccount, Tax, Department } from '@/types';
 import { Timestamp } from 'firebase-admin/firestore';
 import * as XLSX from 'xlsx';
 import Encoding from 'encoding-japanese';
+
+// Firestore用にundefined値を除去するユーティリティ関数
+function removeUndefined<T extends Record<string, any>>(obj: T): Partial<T> {
+  const result: Partial<T> = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (value !== undefined) {
+      result[key as keyof T] = value;
+    }
+  }
+  return result;
+}
 
 /**
  * POST /api/masters/import
  * マスタデータのCSVインポート
  */
 export async function POST(request: NextRequest) {
+  console.log('=== Masters Import API Called ===');
   try {
     // 認証チェック
-    const user = await getSessionUser(request);
+    console.log('Checking authentication...');
+    const user = await getSessionUserFromAppRouter(request);
     if (!user) {
+      console.log('Authentication failed');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+    console.log('User authenticated:', user.uid, user.role);
 
     // 管理者権限チェック
     if (user.role !== 'admin' && user.role !== 'finance') {
@@ -24,15 +39,20 @@ export async function POST(request: NextRequest) {
     }
 
     // フォームデータを取得
+    console.log('Getting form data...');
     const formData = await request.formData();
     const file = formData.get('file') as File;
     const type = formData.get('type') as string;
+    
+    console.log('Import request:', { fileName: file?.name, type, fileSize: file?.size });
 
     if (!file) {
+      console.log('No file provided');
       return NextResponse.json({ error: 'No file provided' }, { status: 400 });
     }
 
     if (!type || !['accounts', 'subAccounts', 'departments', 'taxes'].includes(type)) {
+      console.log('Invalid type provided:', type);
       return NextResponse.json({ error: 'Invalid type' }, { status: 400 });
     }
 
@@ -102,128 +122,230 @@ export async function POST(request: NextRequest) {
 
     switch (type) {
       case 'accounts':
-        // 勘定科目のインポート
+        // 勘定科目のインポート（PCA形式）
+        console.log('Processing accounts import, data rows:', data.length);
         for (const row of data) {
           const pcaCode = row['勘定科目コード'] || row['pcaCode'];
           if (!pcaCode || pcaCode === '勘定科目コード') continue; // ヘッダー行をスキップ
 
+          try {
+            console.log('Processing account:', pcaCode, row['勘定科目名']);
+
+          // 貸借区分の安全な変換
+          const balanceTypeValue = parseInt(row['貸借区分'] || '1');
+          const balanceType = (balanceTypeValue === 1 || balanceTypeValue === 2) ? balanceTypeValue : 1;
+
           const account: Partial<Account> = {
+            // 基本情報
             pcaCode: pcaCode.toString(),
+            attributeCode: row['勘定科目属性'] || undefined,
             name: row['勘定科目名'] || row['name'] || '',
-            taxCode: (row['借方税区分コード'] || row['taxCode'] || '00').toString(),
+            kanaIndex: row['ｶﾅ索引'] || row['カナ索引'] || undefined,
+            fullName: row['勘定科目正式名'] || undefined,
+            
+            // 貸借区分
+            balanceType: balanceType as 1 | 2,
+            
+            // 税区分設定
+            debitTaxCode: (row['借方税区分コード'] || row['taxCode'] || '0').toString(),
+            debitTaxName: row['借方税区分名'] || undefined,
+            creditTaxCode: (row['貸方税区分コード'] || '0').toString(),
+            creditTaxName: row['貸方税区分名'] || undefined,
+            
+            // 関連科目
+            relatedAccountCode: row['関連科目コード'] || undefined,
+            relatedAccountName: row['関連科目名'] || undefined,
+            
+            // 表示・計算設定
+            displayType: parseInt(row['表示区分'] || '1'),
+            autoTaxCalc: parseInt(row['消費税自動計算'] || '0') as 0 | 9,
+            taxRounding: parseInt(row['消費税端数処理'] || '9') as 0 | 9,
+            
+            // 原価管理
+            costType: parseInt(row['固定費変動費区分'] || '0') as 0 | 1 | 2 | 3,
+            fixedCostRatio: parseFloat(row['固定費割合'] || '0'),
+            
+            // 簡易課税
+            businessType: parseInt(row['簡易課税業種'] || '1') as 1 | 2 | 3 | 4 | 5 | 6,
+            
+            // 入力設定
+            requiresPartner: (row['取引先入力'] || '').toString() === '1',
+            statementSetting: row['内訳書の設定'] || undefined,
+            
+            // システム情報
             isActive: true,
             effectiveFrom: Timestamp.now(),
           };
 
-          // エイリアスがある場合は追加
-          if (row['略称'] || row['shortName']) {
-            account.aliases = [row['略称'] || row['shortName']];
+          // カナ索引があればエイリアスとして追加
+          if (account.kanaIndex) {
+            account.aliases = [account.kanaIndex];
           }
 
-          const docRef = companyRef.collection('accounts').doc(pcaCode.toString());
-          batch.set(docRef, account, { merge: true });
-          importedCount++;
+            console.log('Account object created:', JSON.stringify(account, null, 2));
+
+            // undefined値を除去してFirestore用にクリーンアップ
+            const cleanAccount = removeUndefined(account);
+            console.log('Clean account object:', JSON.stringify(cleanAccount, null, 2));
+
+            const docRef = companyRef.collection('accounts').doc(pcaCode.toString());
+            batch.set(docRef, cleanAccount, { merge: true });
+            importedCount++;
+            console.log('Account processed successfully:', pcaCode);
+          } catch (error) {
+            console.error('Error processing account:', pcaCode, error);
+            skippedCount++;
+          }
         }
+        console.log('Accounts processing completed. Imported:', importedCount, 'Skipped:', skippedCount);
         break;
 
       case 'subAccounts':
-        // 補助科目のインポート
-        // 勘定科目ごとにグループ化
-        const subAccountsByAccount: { [key: string]: SubAccount[] } = {};
+        // 補助科目のインポート（PCA形式：25列完全対応）
+        console.log('Processing subAccounts data...');
         
         for (const row of data) {
           const accountCode = row['勘定科目コード'] || row['accountCode'];
           const subCode = row['補助科目コード'] || row['subCode'];
           if (!accountCode || !subCode || accountCode === '勘定科目コード') continue;
 
-          const subAccount: SubAccount = {
+          const accountName = row['勘定科目名'] || '';
+          const name = row['補助科目名'] || row['name'] || '';
+          const kanaIndex = row['ｶﾅ索引'] || row['カナ索引'] || '';
+          const fullName = row['補助科目正式名'] || '';
+          const fullNameKana = row['正式名ﾌﾘｶﾞﾅ'] || '';
+
+          if (!name || !kanaIndex || !fullName || !fullNameKana) {
+            console.log('Skipping sub-account row with missing required data:', { accountCode, subCode, name, kanaIndex });
+            skippedCount++;
+            continue;
+          }
+
+          const subAccount: Partial<SubAccount> = {
+            // 基本情報（PCA順序通り）
+            accountCode: accountCode.toString(),
+            accountName: accountName,
             pcaSubCode: subCode.toString(),
-            name: row['補助科目名'] || row['name'] || '',
-            shortName: row['略称'] || row['shortName'],
-            taxCode: row['借方税区分コード'] || row['taxCode'],
+            name: name,
+            kanaIndex: kanaIndex,
+            fullName: fullName,
+            fullNameKana: fullNameKana,
+
+            // 税設定
+            debitTaxCode: row['借方税区分コード'] || '',
+            debitTaxName: row['借方税区分名'] || '',
+            creditTaxCode: row['貸方税区分コード'] || '',
+            creditTaxName: row['貸方税区分名'] || '',
+            autoTaxCalc: parseInt(row['消費税自動計算'] || '0') || 0,
+            taxRounding: parseInt(row['消費税端数処理'] || '9') || 9,
+
+            // 連絡先情報
+            postalCode: row['郵便番号'] || undefined,
+            address1: row['住所１'] || undefined,
+            address2: row['住所２'] || undefined,
+            tel: row['TEL'] || undefined,
+            fax: row['FAX'] || undefined,
+
+            // 取引条件
+            bankInfo: row['振込先'] || '',
+            closingDay: parseInt(row['締日']) || 0,
+            paymentDay: parseInt(row['支払日']) || 0,
+
+            // 事業者情報
+            corporateNumber: row['法人番号'] || undefined,
+            businessType: parseInt(row['事業者区分']) || 3,
+            invoiceRegistrationNumber: row['適格請求書発行事業者の登録番号'] || undefined,
+            digitalInvoiceReceive: parseInt(row['デジタルインボイス受信']) || 0,
+
             isActive: true,
           };
 
-          if (!subAccountsByAccount[accountCode]) {
-            subAccountsByAccount[accountCode] = [];
-          }
-          subAccountsByAccount[accountCode].push(subAccount);
+          // 補助科目を直接保存
+          const subAccountRef = companyRef.collection('subAccounts').doc(`${accountCode}-${subCode}`);
+          batch.set(subAccountRef, cleanSubAccount, { merge: true });
+          importedCount++;
         }
-
-        // バッチ更新
-        for (const [accountCode, subAccounts] of Object.entries(subAccountsByAccount)) {
-          const accountRef = companyRef.collection('accounts').doc(accountCode);
-          const accountDoc = await accountRef.get();
-          
-          if (accountDoc.exists) {
-            batch.update(accountRef, { subAccounts });
-            importedCount += subAccounts.length;
-          } else {
-            skippedCount += subAccounts.length;
-            console.warn(`勘定科目 ${accountCode} が見つかりません。補助科目をスキップしました。`);
-          }
-        }
+        console.log('SubAccounts processing completed. Imported:', importedCount, 'Skipped:', skippedCount);
         break;
 
       case 'departments':
-        // 部門のインポート
+        // 部門のインポート（PCA形式）
+        console.log('Processing departments import, data rows:', data.length);
         for (const row of data) {
           const deptCode = row['部門コード'] || row['deptCode'];
           if (!deptCode || deptCode === '部門コード') continue;
 
-          const department: Partial<Department> = {
-            pcaDeptCode: deptCode.toString(),
-            name: row['部門名'] || row['name'] || '',
-            parentCode: row['親部門コード'] || row['parentCode'],
-            isActive: true,
-            effectiveFrom: Timestamp.now(),
-          };
+          try {
+            console.log('Processing department:', deptCode, row['部門名']);
 
-          // 000は共通部門として特別扱い
-          if (deptCode === '000') {
-            department.name = department.name || '共通部門';
+            const department: Partial<Department> = {
+              pcaDeptCode: deptCode.toString(),
+              name: row['部門名'] || row['name'] || '',
+              kanaIndex: row['ｶﾅ索引'] || row['カナ索引'],
+              businessType: parseInt(row['簡易課税業種']) || undefined,
+              parentCode: row['親部門コード'] || row['parentCode'],
+              isActive: true,
+              effectiveFrom: Timestamp.now(),
+            };
+
+            // 0または000は共通部門として特別扱い
+            if (deptCode === '0' || deptCode === '000') {
+              department.name = department.name || '共通部門';
+              department.kanaIndex = department.kanaIndex || 'ｷｮｳﾂｳ';
+            }
+
+            console.log('Department object created:', JSON.stringify(department, null, 2));
+
+            const cleanDepartment = removeUndefined(department);
+            const docRef = companyRef.collection('departments').doc(deptCode.toString());
+            batch.set(docRef, cleanDepartment, { merge: true });
+            importedCount++;
+            console.log('Department processed successfully:', deptCode);
+          } catch (error) {
+            console.error('Error processing department:', deptCode, error);
+            skippedCount++;
           }
-
-          const docRef = companyRef.collection('departments').doc(deptCode.toString());
-          batch.set(docRef, department, { merge: true });
-          importedCount++;
         }
+        console.log('Departments processing completed. Imported:', importedCount, 'Skipped:', skippedCount);
         break;
 
       case 'taxes':
-        // 税区分のインポート
+        // 税区分のインポート（PCA形式）
+        console.log('Processing taxes data...');
         for (const row of data) {
-          const taxCode = row['税区分コード'] || row['コード'] || row['taxCode'];
-          if (!taxCode || taxCode === '税区分コード' || taxCode === 'コード') continue;
+          const taxCode = row['コード'] || row['税区分コード'] || row['taxCode'];
+          if (!taxCode || taxCode === 'コード' || taxCode === '税区分コード') continue;
 
-          // 税率を計算（パーセンテージから小数に変換）
-          let rate = 0;
-          const rateStr = row['税率'] || row['rate'] || '0';
-          const rateValue = rateStr.toString().replace('%', '').replace('％', '');
-          rate = parseFloat(rateValue) / 100;
+          const shortName = row['略称'] || row['shortName'] || '';
+          const description = row['説明'] || row['description'] || row['名称'] || '';
 
-          // 税区分名から計算方法を推定
-          const taxName = row['税区分名'] || row['名称'] || '';
-          const method = taxName.includes('内税') ? 'inclusive' : 'exclusive';
+          if (!shortName || !description) {
+            console.log('Skipping tax row with missing data:', { taxCode, shortName, description });
+            skippedCount++;
+            continue;
+          }
 
           const tax: Partial<Tax> = {
             pcaTaxCode: taxCode.toString(),
-            rate: isNaN(rate) ? 0 : rate,
-            rounding: 'floor', // デフォルト値
-            method,
+            shortName: shortName,
+            description: description,
             isActive: true,
             effectiveFrom: Timestamp.now(),
           };
 
+          const cleanTax = removeUndefined(tax);
           const docRef = companyRef.collection('taxes').doc(taxCode.toString());
-          batch.set(docRef, tax, { merge: true });
+          batch.set(docRef, cleanTax, { merge: true });
           importedCount++;
         }
+        console.log('Taxes processing completed. Imported:', importedCount, 'Skipped:', skippedCount);
         break;
     }
 
     // バッチ書き込みを実行
+    console.log('Committing batch with', importedCount, 'records...');
     await batch.commit();
+    console.log('Batch commit successful');
 
     // 監査ログを記録
     await companyRef.collection('auditLogs').add({
@@ -257,6 +379,8 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
+
 
 /**
  * CSVの1行をパースする関数

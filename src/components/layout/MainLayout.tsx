@@ -30,6 +30,16 @@ import {
   AccountCircle as AccountCircleIcon,
   Logout as LogoutIcon,
   ChevronLeft as ChevronLeftIcon,
+  Dashboard as DashboardIcon,
+  Receipt as ReceiptIcon,
+  Analytics as AnalyticsIcon,
+  CloudDownload as CloudDownloadIcon,
+  SettingsApplications as SettingsApplicationsIcon,
+  Business as BusinessIcon,
+  Notifications as NotificationsIcon,
+  Search as SearchIcon,
+  Brightness4 as Brightness4Icon,
+  Brightness7 as Brightness7Icon,
 } from '@mui/icons-material';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -66,27 +76,31 @@ export default function MainLayout({ children }: MainLayoutProps) {
   const menuItems = [
     {
       text: '受信ボックス',
-      icon: <InboxIcon />,
+      icon: <ReceiptIcon />,
       path: '/expenses',
       roles: ['manager', 'finance', 'admin'],
+      description: '経費申請の確認・承認',
     },
     {
       text: 'ダッシュボード',
-      icon: <AssessmentIcon />,
+      icon: <DashboardIcon />,
       path: '/dashboard',
       roles: ['manager', 'finance', 'admin'],
+      description: '概要とレポート',
     },
     {
       text: 'エクスポート',
-      icon: <DownloadIcon />,
+      icon: <CloudDownloadIcon />,
       path: '/export',
       roles: ['finance', 'admin'],
+      description: 'PCA会計へのデータ出力',
     },
     {
       text: '設定',
-      icon: <SettingsIcon />,
+      icon: <SettingsApplicationsIcon />,
       path: '/settings',
       roles: ['finance', 'admin'],
+      description: 'マスタデータ管理',
     },
   ];
 
@@ -127,41 +141,109 @@ export default function MainLayout({ children }: MainLayoutProps) {
       <CssBaseline />
       <AppBar
         position="fixed"
+        elevation={0}
         sx={{
           width: open ? `calc(100% - ${drawerWidth}px)` : '100%',
           ml: open ? `${drawerWidth}px` : 0,
-          transition: 'width 0.3s, margin 0.3s',
+          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
         }}
       >
-        <Toolbar>
+        <Toolbar sx={{ minHeight: '70px !important', px: 3 }}>
           <IconButton
             color="inherit"
-            aria-label="open drawer"
+            aria-label="toggle drawer"
             onClick={handleDrawerToggle}
             edge="start"
-            sx={{ mr: 2 }}
+            sx={{ 
+              mr: 2, 
+              p: 1.5,
+              borderRadius: 2,
+              transition: 'all 0.2s ease-in-out',
+              '&:hover': {
+                background: 'rgba(33, 150, 243, 0.08)',
+                transform: 'scale(1.05)',
+              }
+            }}
           >
             {open ? <ChevronLeftIcon /> : <MenuIcon />}
           </IconButton>
-          <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
-            EARU 経理管理システム
-          </Typography>
-          <Chip
-            label={getRoleLabel(userRole)}
-            color={getRoleBadgeColor(userRole)}
-            size="small"
-            sx={{ mr: 2 }}
-          />
-          <IconButton
-            size="large"
-            edge="end"
-            aria-label="account of current user"
-            aria-haspopup="true"
-            onClick={handleProfileMenuOpen}
-            color="inherit"
-          >
-            <AccountCircleIcon />
-          </IconButton>
+          
+          <Box sx={{ display: 'flex', alignItems: 'center', flexGrow: 1 }}>
+            <BusinessIcon sx={{ mr: 1.5, fontSize: 28, color: 'primary.main' }} />
+            <Typography 
+              variant="h5" 
+              noWrap 
+              component="div" 
+              sx={{ 
+                fontWeight: 700,
+                background: 'linear-gradient(135deg, #1976d2 0%, #42a5f5 100%)',
+                backgroundClip: 'text',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                letterSpacing: '-0.5px',
+              }}
+            >
+              EARU 経理管理システム
+            </Typography>
+          </Box>
+
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <IconButton
+              color="inherit"
+              sx={{ 
+                p: 1.5,
+                borderRadius: 2,
+                '&:hover': {
+                  background: 'rgba(33, 150, 243, 0.08)',
+                }
+              }}
+            >
+              <SearchIcon />
+            </IconButton>
+            
+            <IconButton
+              color="inherit"
+              sx={{ 
+                p: 1.5,
+                borderRadius: 2,
+                '&:hover': {
+                  background: 'rgba(33, 150, 243, 0.08)',
+                }
+              }}
+            >
+              <NotificationsIcon />
+            </IconButton>
+            
+            <Chip
+              label={getRoleLabel(userRole)}
+              color={getRoleBadgeColor(userRole)}
+              size="small"
+              sx={{ 
+                mx: 1,
+                fontWeight: 600,
+                '& .MuiChip-label': {
+                  px: 1.5,
+                }
+              }}
+            />
+            
+            <Avatar
+              sx={{ 
+                width: 40, 
+                height: 40,
+                cursor: 'pointer',
+                border: '2px solid rgba(33, 150, 243, 0.2)',
+                transition: 'all 0.2s ease-in-out',
+                '&:hover': {
+                  border: '2px solid rgba(33, 150, 243, 0.5)',
+                  transform: 'scale(1.05)',
+                }
+              }}
+              onClick={handleProfileMenuOpen}
+            >
+              <AccountCircleIcon />
+            </Avatar>
+          </Box>
           <Menu
             anchorEl={anchorEl}
             anchorOrigin={{
@@ -175,16 +257,47 @@ export default function MainLayout({ children }: MainLayoutProps) {
             }}
             open={Boolean(anchorEl)}
             onClose={handleProfileMenuClose}
+            PaperProps={{
+              sx: {
+                mt: 1,
+                borderRadius: 3,
+                boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
+                border: '1px solid rgba(255, 255, 255, 0.2)',
+                minWidth: 250,
+              }
+            }}
           >
-            <MenuItem disabled>
-              <Typography variant="body2">{user?.email}</Typography>
-            </MenuItem>
-            <Divider />
-            <MenuItem onClick={handleSignOut}>
-              <ListItemIcon>
-                <LogoutIcon fontSize="small" />
+            <Box sx={{ p: 2, borderBottom: '1px solid rgba(0, 0, 0, 0.08)' }}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 600, color: 'text.primary' }}>
+                ログイン中のユーザー
+              </Typography>
+              <Typography variant="body2" sx={{ color: 'text.secondary', mt: 0.5 }}>
+                {user?.email}
+              </Typography>
+              <Chip
+                label={getRoleLabel(userRole)}
+                color={getRoleBadgeColor(userRole)}
+                size="small"
+                sx={{ mt: 1 }}
+              />
+            </Box>
+            
+            <MenuItem 
+              onClick={handleSignOut}
+              sx={{ 
+                py: 1.5,
+                px: 2,
+                '&:hover': {
+                  background: 'rgba(244, 67, 54, 0.08)',
+                }
+              }}
+            >
+              <ListItemIcon sx={{ minWidth: 36 }}>
+                <LogoutIcon fontSize="small" color="error" />
               </ListItemIcon>
-              ログアウト
+              <Typography sx={{ color: 'error.main', fontWeight: 500 }}>
+                ログアウト
+              </Typography>
             </MenuItem>
           </Menu>
         </Toolbar>
@@ -196,7 +309,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
           '& .MuiDrawer-paper': {
             width: drawerWidth,
             boxSizing: 'border-box',
-            transition: 'width 0.3s',
+            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
             ...(open ? {} : { width: 0, overflow: 'hidden' }),
           },
         }}
@@ -204,21 +317,116 @@ export default function MainLayout({ children }: MainLayoutProps) {
         anchor="left"
         open={open}
       >
-        <Toolbar />
-        <Box sx={{ overflow: 'auto' }}>
-          <List>
-            {filteredMenuItems.map((item) => (
-              <ListItem key={item.text} disablePadding>
+        <Toolbar sx={{ minHeight: '70px !important' }} />
+        
+        {/* ブランドセクション */}
+        <Box sx={{ p: 3, borderBottom: '1px solid rgba(0, 0, 0, 0.08)' }}>
+          <Typography variant="overline" sx={{ 
+            color: 'text.secondary', 
+            fontWeight: 600,
+            letterSpacing: 1,
+            fontSize: '0.75rem'
+          }}>
+            メインメニュー
+          </Typography>
+        </Box>
+        
+        <Box sx={{ overflow: 'auto', flex: 1, py: 2 }}>
+          <List sx={{ px: 1 }}>
+            {filteredMenuItems.map((item, index) => (
+              <ListItem 
+                key={item.text} 
+                disablePadding
+                sx={{ mb: 0.5 }}
+              >
                 <ListItemButton
                   selected={pathname === item.path}
                   onClick={() => router.push(item.path)}
+                  sx={{
+                    borderRadius: 2,
+                    mx: 1,
+                    py: 1.5,
+                    '&.Mui-selected': {
+                      background: 'linear-gradient(135deg, rgba(33, 150, 243, 0.08) 0%, rgba(33, 150, 243, 0.12) 100%)',
+                      '&:before': {
+                        content: '""',
+                        position: 'absolute',
+                        left: 0,
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        width: 4,
+                        height: '60%',
+                        background: 'linear-gradient(135deg, #1976d2 0%, #42a5f5 100%)',
+                        borderRadius: '0 2px 2px 0',
+                      }
+                    }
+                  }}
                 >
-                  <ListItemIcon>{item.icon}</ListItemIcon>
-                  <ListItemText primary={item.text} />
+                  <ListItemIcon sx={{ 
+                    minWidth: 44,
+                    color: pathname === item.path ? 'primary.main' : 'text.secondary',
+                    '& .MuiSvgIcon-root': {
+                      fontSize: 24,
+                      transition: 'all 0.2s ease-in-out',
+                    }
+                  }}>
+                    {item.icon}
+                  </ListItemIcon>
+                  
+                  <ListItemText 
+                    primary={
+                      <Typography 
+                        variant="body1" 
+                        sx={{ 
+                          fontWeight: pathname === item.path ? 600 : 500,
+                          color: pathname === item.path ? 'primary.main' : 'text.primary',
+                        }}
+                      >
+                        {item.text}
+                      </Typography>
+                    }
+                    secondary={
+                      <Typography 
+                        variant="caption" 
+                        sx={{ 
+                          color: 'text.secondary',
+                          fontSize: '0.75rem',
+                          mt: 0.5,
+                          display: 'block'
+                        }}
+                      >
+                        {item.description}
+                      </Typography>
+                    }
+                  />
                 </ListItemButton>
               </ListItem>
             ))}
           </List>
+          
+          {/* フッター情報 */}
+          <Box sx={{ mt: 'auto', p: 3 }}>
+            <Box sx={{ 
+              p: 2, 
+              background: 'linear-gradient(135deg, rgba(33, 150, 243, 0.05) 0%, rgba(33, 150, 243, 0.1) 100%)',
+              borderRadius: 2,
+              border: '1px solid rgba(33, 150, 243, 0.1)'
+            }}>
+              <Typography variant="caption" sx={{ 
+                color: 'text.secondary',
+                fontWeight: 600,
+                display: 'block'
+              }}>
+                システム情報
+              </Typography>
+              <Typography variant="caption" sx={{ 
+                color: 'text.secondary',
+                fontSize: '0.7rem'
+              }}>
+                Version 1.0.0
+              </Typography>
+            </Box>
+          </Box>
         </Box>
       </Drawer>
       <Box
@@ -226,14 +434,43 @@ export default function MainLayout({ children }: MainLayoutProps) {
         sx={{
           flexGrow: 1,
           bgcolor: 'background.default',
-          p: 3,
+          p: { xs: 2, sm: 3 },
           width: open ? `calc(100% - ${drawerWidth}px)` : '100%',
           ml: open ? 0 : `-${drawerWidth}px`,
-          transition: 'width 0.3s, margin 0.3s',
+          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+          minHeight: '100vh',
+          position: 'relative',
+          '&:before': {
+            content: '""',
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            background: 'linear-gradient(135deg, rgba(33, 150, 243, 0.02) 0%, rgba(156, 39, 176, 0.02) 100%)',
+            pointerEvents: 'none',
+            zIndex: -1,
+          }
         }}
       >
-        <Toolbar />
-        {children}
+        <Toolbar sx={{ minHeight: '70px !important' }} />
+        <Box sx={{ 
+          position: 'relative', 
+          zIndex: 1,
+          animation: 'fadeIn 0.6s ease-out',
+          '@keyframes fadeIn': {
+            '0%': {
+              opacity: 0,
+              transform: 'translateY(20px)',
+            },
+            '100%': {
+              opacity: 1,
+              transform: 'translateY(0)',
+            },
+          }
+        }}>
+          {children}
+        </Box>
       </Box>
     </Box>
   );
