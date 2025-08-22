@@ -1,0 +1,10 @@
+flowchart LR
+  Staff["staff(本人)"] -- read/write --> UExp["users/{uid}/expenses"]
+  Staff -- read/write --> UFiles["users/{uid}/expense_files"]
+  Manager["manager"] -- read --> Search["expense_search"]
+  Finance["finance"] -- read --> Search
+  Admin["admin"] -- read --> Search
+  Finance -- read/write --> Masters["accounts/taxes/departments/categories"]
+  Admin -- read/write --> Masters
+  Functions["Functions"] -- write(sync) --> Search
+

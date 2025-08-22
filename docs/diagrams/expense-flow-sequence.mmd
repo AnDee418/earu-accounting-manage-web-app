@@ -1,0 +1,17 @@
+sequenceDiagram
+  participant U as "Mobile(User)"
+  participant FS as "Firestore"
+  participant FN as "Cloud Functions"
+  participant W as "Web(Finance)"
+  participant ST as "Storage"
+
+  U->>FS: users/{uid}/expenses 作成(draft)
+  U->>ST: 画像アップロード
+  FN-->>FS: AI結果書込み(ai, status)
+  U->>FS: status = submitted
+  W->>FS: 承認(approved)
+  W->>FN: エクスポートジョブ作成
+  FN->>FS: exportJobs ステータス更新
+  FN->>ST: CSV生成
+  FN-->>FS: expenses.pcaStatus = exported
+

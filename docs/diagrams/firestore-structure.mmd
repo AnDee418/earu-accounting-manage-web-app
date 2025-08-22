@@ -1,0 +1,17 @@
+flowchart TD
+  A["companies/{companyId}"] --> A1["users/{userId}"]
+  A1 --> A1a["profile"]
+  A1 --> A1b["expenses/{expenseId}"]
+  A1 --> A1c["expense_files/{expenseId}/{fileId}"]
+  A1 --> A1d["notifications/{notificationId}"]
+
+  A --> B1["departments/{deptCode}"]
+  A --> B2["accounts/{pcaCode}"]
+  A --> B3["taxes/{pcaTaxCode}"]
+  A --> B4["categories/{categoryId}"]
+  A --> B5["exportProfiles/{profileId}"]
+  A --> B6["exportJobs/{jobId}"]
+  A --> B7["auditLogs/{logId}"]
+
+  A --> C1["expense_search/{expenseId}"]
+
