@@ -131,7 +131,7 @@ export interface ImportResult {
 }
 
 // タブの種類
-export type SettingsTabType = 'taxes' | 'accounts' | 'subAccounts' | 'categories' | 'departments' | 'users';
+export type SettingsTabType = 'taxes' | 'accounts' | 'subAccounts' | 'categories' | 'departments' | 'users' | 'accountRules' | 'taxRules' | 'departmentMapping' | 'dataFormat';
 
 // フィルターオプション
 export interface MasterDataFilters {

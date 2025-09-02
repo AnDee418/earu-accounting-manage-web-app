@@ -14,9 +14,14 @@ import {
   AccountMasterTable,
   SubAccountMasterTable,
   DepartmentMasterTable,
-  CategoryMasterTable,
 } from '@/features/settings/components';
 import UserManagement from '@/features/users/components/UserManagement';
+import {
+  AccountAssignmentRuleManager,
+  TaxAssignmentRuleManager,
+  DepartmentCashMappingManager,
+  DataFormatSettingsManager,
+} from '@/features/rules/components';
 import { useMasterData } from '@/features/settings/hooks/useMasterData';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -92,7 +97,7 @@ export default function SettingsPage() {
           />
 
           {/* ローディング状態 */}
-          {loading && activeTab < 5 && (
+          {loading && activeTab < 6 && (
             <LoadingSpinner 
               message="マスタデータを読み込み中..." 
               sx={{ py: 8 }} 
@@ -129,15 +134,6 @@ export default function SettingsPage() {
                 />
               )}
               
-              {tabConfig.type === 'categories' && (
-                <CategoryMasterTable
-                  categories={masterData.categories || []}
-                  loading={loading}
-                  onRefresh={fetchMasters}
-                  onImport={() => {/* TODO: カテゴリ作成機能 */}}
-                />
-              )}
-              
               {tabConfig.type === 'departments' && (
                 <DepartmentMasterTable
                   departments={masterData.departments || []}
@@ -150,6 +146,30 @@ export default function SettingsPage() {
               {tabConfig.type === 'users' && userRole === 'admin' && (
                 <UserManagement 
                   departments={masterData.departments || []} 
+                />
+              )}
+
+              {tabConfig.type === 'accountRules' && (
+                <AccountAssignmentRuleManager
+                  onRefresh={fetchMasters}
+                />
+              )}
+
+              {tabConfig.type === 'taxRules' && (
+                <TaxAssignmentRuleManager
+                  onRefresh={fetchMasters}
+                />
+              )}
+
+              {tabConfig.type === 'departmentMapping' && (
+                <DepartmentCashMappingManager
+                  onRefresh={fetchMasters}
+                />
+              )}
+
+              {tabConfig.type === 'dataFormat' && (
+                <DataFormatSettingsManager
+                  onRefresh={fetchMasters}
                 />
               )}
             </TabPanel>

@@ -1,5 +1,7 @@
 import { BaseEntity, UserRole } from '../common';
 
+export type { UserRole };
+
 // ユーザープロファイル
 export interface UserProfile extends BaseEntity {
   uid: string;

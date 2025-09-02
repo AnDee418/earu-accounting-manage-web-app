@@ -8,4 +8,3 @@ export { default as TaxMasterTable } from './TaxMasterTable';
 export { default as AccountMasterTable } from './AccountMasterTable';
 export { default as SubAccountMasterTable } from './SubAccountMasterTable';
 export { default as DepartmentMasterTable } from './DepartmentMasterTable';
-export { default as CategoryMasterTable } from './CategoryMasterTable';

@@ -12,5 +12,8 @@ export * from './expenses';
 // 設定・マスタデータ関連
 export * from './settings';
 
+// ルール管理関連
+export * from './rules';
+
 // 後方互換性のため、従来のエクスポートも維持
 // 将来的には段階的に削除予定

@@ -7,6 +7,10 @@ import {
   Business as DepartmentIcon,
   People as UsersIcon,
   Folder as SubAccountIcon,
+  Rule as RuleIcon,
+  Assignment as AssignmentIcon,
+  Map as MappingIcon,
+  Settings as FormatIcon,
 } from '@mui/icons-material';
 
 import { SettingsTabType } from '@/types/settings';
@@ -49,13 +53,6 @@ const TAB_CONFIGS: TabConfig[] = [
     description: 'PCA補助科目マスタの管理',
   },
   {
-    label: 'カテゴリ',
-    icon: <CategoryIcon />,
-    type: 'categories',
-    roles: ['finance', 'admin'],
-    description: '経費カテゴリの管理',
-  },
-  {
     label: '部門',
     icon: <DepartmentIcon />,
     type: 'departments',
@@ -69,15 +66,43 @@ const TAB_CONFIGS: TabConfig[] = [
     roles: ['admin'],
     description: '会社内ユーザーの管理',
   },
+  {
+    label: '勘定科目ルール',
+    icon: <RuleIcon />,
+    type: 'accountRules',
+    roles: ['finance', 'admin'],
+    description: '勘定科目自動割り当てルール',
+  },
+  {
+    label: '税区分ルール',
+    icon: <AssignmentIcon />,
+    type: 'taxRules',
+    roles: ['finance', 'admin'],
+    description: '税区分自動判定ルール',
+  },
+  {
+    label: '部門マッピング',
+    icon: <MappingIcon />,
+    type: 'departmentMapping',
+    roles: ['finance', 'admin'],
+    description: '部門・現金補助科目マッピング',
+  },
+  {
+    label: 'データフォーマット',
+    icon: <FormatIcon />,
+    type: 'dataFormat',
+    roles: ['finance', 'admin'],
+    description: 'PCAデータフォーマット設定',
+  },
 ];
 
-export default function SettingsTabs({ 
-  activeTab, 
-  onTabChange, 
+export default function SettingsTabs({
+  activeTab,
+  onTabChange,
   userRole
 }: SettingsTabsProps) {
   // ユーザーロールに基づいてタブをフィルタリング
-  const visibleTabs = TAB_CONFIGS.filter(tab => 
+  const visibleTabs = TAB_CONFIGS.filter(tab =>
     !tab.roles.length || tab.roles.includes(userRole || 'staff')
   );
 
@@ -110,10 +135,10 @@ export default function SettingsTabs({
                   {tab.icon}
                   {tab.label}
                 </Box>
-                <Box 
-                  component="span" 
-                  sx={{ 
-                    fontSize: '0.7rem', 
+                <Box
+                  component="span"
+                  sx={{
+                    fontSize: '0.7rem',
                     color: 'text.secondary',
                     textAlign: 'center',
                     lineHeight: 1.2,
